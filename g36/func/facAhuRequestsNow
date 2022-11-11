@@ -62,11 +62,6 @@
 
   // Loop through outputs and calculate request for each
   zoneOutputs.each((rec,index) => do
-    // Timer, optional
-    //if (index < 2)
-    //logInfo("facAhuRequestsNowTimer","facAhuRequestsNow line 73, "+
-    //        "loop "+index+", hisRead "+rec.dis())
-          
     his: rec.hisRead(now()-hystTime..now())
     // If latest datapoint is too old, skip zone
     if (isEmpty(his.findAll(r => r->ts > now()-offlineTime)))
@@ -81,9 +76,10 @@
         
         // Store request if point exists and isn't connected to BMS trend
         writePt: if (reqPtTags==null) null
-                 else toolRecursiveSearch(rec->equipRef, reqPtTags,
-                                          ["equipRef"], ["equip"], 1)
-                      .first
+                 else (reqPtTags + " and equipRef==@" + rec->equipRef)
+                      .parseFilter()
+                      .read(false)
+
         if (writePt!=null and jobIsRunning())
           hisWrite({ts:now(), val:zoneReq.as(1)}, writePt)
 
@@ -107,6 +103,7 @@ end
 
 /*------------------------------------------------------------------------------
   Updates
+  2022-11-11   Removed recursive search for request history point.
   2022-01-21   Added tags for requests points and ignore functions for heating
                and pressure requests, previously only programmed for cooling.
   2020-05-12   Added timers. Restricted toolRecursiveSearch to equipRef and
