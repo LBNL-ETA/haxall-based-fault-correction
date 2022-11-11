@@ -1,0 +1,224 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  For a target, registered PID loop test (pidLoopTest), continue or complete 
+  an ongoing test, or start a new test if one is needed and conditions are met.
+  
+  Arguments:
+  pidLoopTestRef     Id of PID loop test record (pidLoopTest)
+------------------------------------------------------------------------------*/
+
+(pidLoopTestRef) => do
+
+  // Normalize to record
+  pidLoopTest: if (isRef(pidLoopTestRef)) readById(pidLoopTestRef)
+               else pidLoopTestRef
+
+  // Exit if test already succeeded or failed
+  if (pidLoopTest.has("success") or pidLoopTest.has("failure"))
+    return null
+
+  // Related variables
+  pid: readById(pidLoopTest->pidLoopRef)
+  maxActiveDuration: pidLoopTest->maxActiveDuration
+  minSignalNoiseRatio: pidLoopTest->minSignalNoiseRatio
+
+  // Synchronize recent trends for target points
+  readByIds([pid->controlVariableRef, pid->processVariableRef])
+  .bacnetSyncHis()
+
+  /*----------------------------------------------------------------------------
+  // Reset or stop test based on test conditions
+  ----------------------------------------------------------------------------*/
+  // If test has not started yet or has just started, conditions are checked 
+  // on 5 previous minutes
+  testSpan: if (pidLoopTest.missing("tStable")) now()-5min..now()
+            else pidLoopTest->tStable..now()
+  try facPIDAutoTestConditionsMet(pid, testSpan)
+  catch (ex) do
+    // Only fail the test if exception has "stop" or is missing "hold" tag
+    if (ex.has("stop") or ex.missing("hold"))
+      return {failure,
+              msg: "Test cancelled by facPIDAutoTestConditionsMet: " + ex->dis}
+    // Reset the test if testing conditions failed with "hold" tag
+    else if (ex.has("hold"))
+      return {reset,
+              msg: "Test on hold or reset: " + ex->dis}
+  end
+   
+  /*----------------------------------------------------------------------------
+  // Initialization
+  ----------------------------------------------------------------------------*/
+  if (pidLoopTest.missing("stage")) do
+    // Parameters
+    minCmd: 10%         // Minimum pre-step target to avoid unresponsive
+                        // end of control range
+    cmdStep: pidLoopTest->cmdStep
+
+    // Determine average command recently
+    avgCmd: try readById(pid->controlVariableRef)
+                .hisRead(now()-maxActiveDuration..now())
+                .hisClip()
+                .foldCol("v0", avg)
+            catch null
+            
+    // Process non-test cases
+    if (avgCmd == null)
+      return {failure,
+              msg: "Could not load or process control variable trends"}
+  
+    // Pre-step and step targets
+    cmd0: max(min(avgCmd - cmdStep/2, 100% - cmdStep), minCmd)
+    cmd1: cmd0 + cmdStep
+
+    // Perform first override
+    try pointOverride(pid->controlVariableRef, cmd0, maxActiveDuration*2)
+    catch
+      return {failure,
+              msg: "Override to cmd0 failed"}
+    
+    // Initialization complete
+    return {cmd0: cmd0,
+            cmd1: cmd1,
+            t0: now(),
+            startDateTime: now(),
+            stage: 0,
+            msg: "Override to " + cmd0.format("0.0")
+                 + " performed at " + now().format()}
+  
+  // End of initialization
+  end
+  
+  /*----------------------------------------------------------------------------
+  // Check previous overrides were successful
+  ----------------------------------------------------------------------------*/
+  if (pidLoopTest.has("stage")) do
+    if (pidLoopTest->stage==0) do
+      targetCmd: pidLoopTest->cmd0
+      tStart: pidLoopTest->t0
+    end else if (pidLoopTest->stage==1) do
+      targetCmd: pidLoopTest->cmd1
+      tStart: pidLoopTest->t1
+    end else throw "PID loop test stage not valid"
+
+    cmdDelay: if (pid.has("cmdDelay")) pid->cmdDelay else 1min
+    cmd: try readById(pid->controlVariableRef)
+             .hisRead(tStart+cmdDelay..now())
+             .hisClip()
+             .foldCol("v0", avg)
+         catch null
+
+    if (cmd!=null and targetCmd!=null and abs(cmd - targetCmd) > 1)
+      return {failure,
+              msg: "Override to " + targetCmd.format("0.0")
+                   + " failed: " + cmd.format("0.0")}
+  end
+  
+  /*----------------------------------------------------------------------------
+  // Continue step test
+  ----------------------------------------------------------------------------*/
+  // Parameters
+  pvPoint: readById(pid->processVariableRef)
+  stableRange: if (pvPoint.has("discharge") and pvPoint.has("temp")) 2
+               else 1
+  stableDuration: maxActiveDuration / 6
+  maxWaitDuration: maxActiveDuration / 3
+               
+  // Allow up to 1/3rd of maxActiveDuration at cmd0
+  tWaitUntil: pidLoopTest->startDateTime + stableDuration
+  tForceStep: pidLoopTest->startDateTime + maxWaitDuration
+  
+  // Check for stabilization of PV in recent "stableDuration"
+  recentPvHis: readById(pid->processVariableRef)
+               .hisRead(now()-stableDuration..now(), {-limit})
+               .hisClip()
+  recentPvRange: recentPvHis.foldCol("v0",max) - recentPvHis.foldCol("v0",min)
+  
+  // Perform step change if stability achieved or max time at cmd0 elapsed
+  if (pidLoopTest->stage==0 and now() > tWaitUntil
+      and (now() >= tForceStep or recentPvRange < stableRange)) do
+    try pointOverride(pid->controlVariableRef,
+                      pidLoopTest->cmd1,
+                      maxActiveDuration*2)
+    catch
+      return {failure,
+              msg: "Override to " + pidLoopTest->cmd1.format("0.0")
+                   + " failed"}
+    
+    // Step change complete
+    return {stage: 1,
+            tStable: recentPvHis.first->ts,
+            t1: now(),
+            msg: "Step change to " + pidLoopTest->cmd1.format("0.0")
+                 + " performed at " + now().format()}
+  end
+  
+  // Check if successful result is obtained from facPIDOpenLoopTuningRules
+  if (pidLoopTest->stage==1) do
+    try res: readByIds([pid->controlVariableRef, pid->processVariableRef])
+             .hisRead(pidLoopTest->tStable..now(), {-limit})
+             .hisClip()
+             .facPIDOpenLoopTuningRules(2, 60s, minSignalNoiseRatio)
+             .first
+    catch (ex) do
+      // Only fail the test if facPIDOpenLoopTuningRules's exception has "stop" tag
+      if (ex.has("stop"))
+        return {failure,
+                msg: "Test cancelled by facPIDOpenLoopTuningRules: " + ex->dis}
+       
+      // Otherwise continue with no results 
+      res: null
+    end
+  
+    // Success if res is not empty
+    if (res!=null and res.has("tau"))
+      return {success,
+              td: res["td"],
+              tau: res["tau"],
+              gp: res["gp"],
+              -msg}
+  
+  // End of trying facPIDOpenLoopTuningRules on available data
+  end
+
+  /*----------------------------------------------------------------------------
+  // Catch remaining cases, apply maxActiveDuration
+  ----------------------------------------------------------------------------*/
+  // If maxActiveDuration is reached, stop test
+  tEnd: pidLoopTest->startDateTime + maxActiveDuration
+  if (now() > tEnd)
+    return {failure,
+            msg: "No results were obtained before maxActiveDuration"}
+  
+  // Otherwise, continue test
+  return {}
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2022-04-22  Raphael Vitti
+    Modified stableRange so it is increased from 1 to 2 only for DAT sensors,
+    instead of being increased for all temperatures.
+    Decreased minCmd from 25% to 10%.
+  2021-02-07  Raphael Vitti
+    Created.
+  2021-08-06  Raphael Vitti
+    Added cmdDelay to allow for ramping of cmd.
+------------------------------------------------------------------------------*/
