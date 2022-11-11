@@ -1,0 +1,13 @@
+dis:Reset Settings Template
+package:fac-g36
+tags:
+  resetSettings: {kind:"Marker" hidden}
+  spRef: {kind:"Ref<sp>"}
+  sp0: {kind: "Number" unitless}
+  spMin: {kind: "Number" unitless}
+  spMax: {kind: "Number" unitless}
+  spTrim: {kind: "Number" unitless}
+  spRes: {kind: "Number" unitless}
+  spResMax: {kind: "Number" unitless}
+  ignore: {kind: "Number" unitless}
+template:resetSettings
