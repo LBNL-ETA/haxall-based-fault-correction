@@ -1,0 +1,62 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  Fold function to calculate derivative of point value
+  
+  Arguments: 
+  *** Typical arguments for fold functions with arity of three
+------------------------------------------------------------------------------*/
+
+(val, ts, acc) => do
+  //Initialization, retruning the accumulator
+  if (val == foldStart()) return {deltaTs:0,deltaVal:0}
+  
+  // Final, returning result
+  if (val == foldEnd()) do
+    if (acc->deltaTs>0) do
+      return acc->deltaVal / acc->deltaTs
+    end else do 
+      return 0
+    end
+  end
+  
+  // Manage N/A value
+  if (val == na()) return na()
+  
+  // Manage NULL value
+  if (val == null) return na()
+  
+  // First time step
+  if (not acc.has("prevVal"))
+    return {deltaTs:0, deltaVal:0, prevVal:val, prevTs:ts}
+  
+  // All other time steps
+  return {deltaTs:acc->deltaTs + (ts - acc->prevTs),
+          deltaVal:acc->deltaVal + (val - acc->prevVal),
+          prevTs:ts,
+          prevVal:val
+         }
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2022-09-01  Raphael Vitti
+    Updated header and footer.
+------------------------------------------------------------------------------*/
