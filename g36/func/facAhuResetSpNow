@@ -1,0 +1,131 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  For a given sp point, check the type of point (cool / heat / pressure), and 
+  the related AHU. Use appropriate function to compile related zone requests. 
+  Use guideline 36 trim and respond to reset the setpoint and write to it.
+
+  Should be run every 5 minutes, as a recurring job.
+  
+  Arguments: 
+  spRef        Id of a writable sp point to reset
+  ahuRef       Id of the associated AHU (if null, use equip of spRef)
+  hystTime     Time, hysteresis of the request generation
+  offlineTime  Time, allowed gap between latest data point and now(), restart 
+               sp calc if latest sp value is older than offlineTime
+------------------------------------------------------------------------------*/
+(spRef:@p:lbnl:r:25d85556-a76f3c05, ahuRef:@p:lbnl:r:22dc02cf-fb26e410,
+ hystTime: 3hr, offlineTime: 30min) => do
+  // Normalization
+  spId: if (isRef(spRef)) spRef else spRef->id
+  sp: readById(spId)
+  ahuId: if (ahuRef==null) sp->equipRef
+         else if (isRef(ahuRef)) ahuRef
+              else ahuRef->id
+  ahu: readById(ahuId)
+
+  // Retrieve reset settings
+  rs: read(resetSettings and spRef==spId, false)
+  if (rs==null) return null
+  // Process trim and respond settings
+  baseIgnores: rs->ignore
+  spRes: rs->spRes
+  spTrim: rs->spTrim
+  spResMax: rs->spResMax
+  resSign: spRes/abs(spRes)
+  if (resSign != spResMax/abs(spResMax))
+    throw "spRes and spResMax signs must be the same"
+  
+  // Retrieve latest setpoint value or re-initialize
+  // Work with unitless numbers and convert at the end
+  spHis: sp.hisRead(now()-offlineTime..now())
+  spLast: if (isEmpty(spHis.hisClip)) rs->sp0
+          else spHis.colToList("v0").last.as(1)
+  
+  // Determine zone points to look at based on setpoint type
+  ptTags: if (sp.has("cool")) "cool and pid and cmd"
+          else if (sp.has("heat")) "heat and valve and cmd"
+          else if (sp.has("pressure")) "damper and cmd"
+          else throw "Setpoint type not identified"
+
+  // Retrieve requests and ignores
+  reqsDict: facAhuRequestsNow(ahuId, ptTags, hystTime, offlineTime)
+  requests: reqsDict->requests
+  ignores: baseIgnores + reqsDict->ignores
+
+  // If appropriate points exist, store data
+  zonesReportingPt: read(reporting and zones and sensor
+                         and equipRef==sp->equipRef, false)
+  requestsPt: read(request and sensor and equipRef==sp->equipRef, false)
+  ignoresPt: read(ignore and cmd and equipRef==sp->equipRef, false)
+  
+  if (zonesReportingPt!=null and jobIsRunning())
+    hisWrite({ts:now(), val:reqsDict->reportingZones.as(1)}, zonesReportingPt)
+  if (requestsPt!=null and jobIsRunning())
+    hisWrite({ts:now(), val:requests.as(1)}, requestsPt)
+  if (ignoresPt!=null and jobIsRunning())
+    hisWrite({ts:now(), val:ignores.as(1)}, ignoresPt)
+
+  // Determine new setpoint
+  effRequests: max(0, requests - ignores)
+  if (effRequests > 0)
+    // Respond
+    spNext: spLast + resSign * min(abs(spResMax), abs(spRes * effRequests))
+  else
+    // Trim
+    spNext: spLast + spTrim
+    
+  // Apply bounds
+  spNext= min(max(spNext,rs->spMin),rs->spMax)
+  // Apply unit
+  spNext= spNext.as(sp->unit)
+          
+  // Write new setpoint to history and to BACnet point if writable
+  {ts:now(), val:spNext}.hisWrite(sp)
+  if (sp.has("writable"))
+    pointWrite(sp,                       // Writable point
+               spNext,                   // Value to write (ignores)
+               16,                       // BACnet priority
+               "facAhuResetSpNow")       // Source
+
+  // If setpoint's equip has a watchdog accumulator, increment
+  watchdogPt: read(watchdog and accumulator and cmd and equipRef==sp->equipRef,
+                   false)
+  if (watchdogPt!=null) do
+    watchdogHis: watchdogPt.hisRead(now()-offlineTime..now())
+    watchdog: if (isEmpty(watchdogHis)) 0
+              else (watchdogHis.colToList("v0").last.as(1) + 1)
+    {ts:now(), val:watchdog}.hisWrite(watchdogPt)
+    if (watchdogPt.has("writable"))
+    pointWrite(watchdogPt,               // Writable point
+               watchdog,                 // Value to write (ignores)
+               16,                       // BACnet priority
+               "facAhuResetSpNow")       // Source
+  end
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2020-02-28  Raphael Vitti
+    Added storage of total incoming requests, incoming ignores and number
+    of zones reporting. Added management of base ignores + addtl ignores.
+  2020-04-16  Raphael Vitti
+    Added hisClip when testing whether there is recent setpoint history data.
+------------------------------------------------------------------------------*/
