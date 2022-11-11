@@ -1,0 +1,22 @@
+dis:PID Testing
+appName:faultAutoCorrection
+depends:["facPIDResetTests","viPIDLoopsList","viPIDLoopTestsList"]
+order:8
+package:fac-pid
+view:pidLoopsTesting
+src:
+  view: {inherit:"tile"}
+  layout: {var kind:"Str" defVal:"grid 6x6; 0 0 6 4; 0 4 6 2"}
+  pidLoops: Trio:
+    view: {inherit:"table"}
+    uiViewBar: {var kind:"Dict" defVal:{} showVarLabels:T}
+    selectedId: {var bindSelect:"id"}
+    new: {action:"recNew" dis:"New" refresh templateName:"pidLoop" confirm: {icon:"warn" dis:"Control variable point will be made writable" details:"For automated testing to work, the control variable will be made BACnet writable, with level set at 15. Additionally, temporary polling may be enabled on the process variable at intervals of 30s."}}
+    edit: {dis:"Edit" refresh action:"recEdit" templateName:"pidLoop" select}
+    trash: {dis:"Trash" confirm:{dis:"Moving PID loop registration record(s) to trash" details:"You are about to move the selected records to the trash. Click yes to continue."} refresh action:"recTrash" select}
+    resetPidTests: {dis:"Reset Tests" refresh action:"facPIDResetTests" templateName:"resetPidTests" select confirm:{dis:"Reset testing results for selected PID loop" details:"You are about to mark all previous tests for the selected PID loop as expired and restart the testing sequence. Click yes to continue."}}
+    data: {expr:"viPIDLoopsList()"}
+  subView: Trio:
+    view: {inherit:"table"}
+    selectedLoopRef: {var input binding:"../pidLoops/selectedId"}
+    data: {expr:"viPIDLoopTestsList({{selectedLoopRef}})"}
