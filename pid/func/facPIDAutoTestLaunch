@@ -1,0 +1,121 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  For a target, registered PID loop (pidLoop), determine if a test is needed
+  and can be performed. If so, register pidLoopTest and start related task.
+  
+  Arguments:
+  pidLoopRef              Id of target PID loop record
+  testMinInterval         Minimum delay between two tests of the same loop
+  testTaskFreq            Frequency of auto-testing task
+  testMaxStandbyDuration  Maximum allowed duration of auto-test in standby,
+                          typically waiting for required conditions
+  testMaxActiveDuration   Maximum allowed duration before an ongoing test is 
+                          cancelled
+  minSignalNoiseRatio     Number, S/N threshold above which results are valid
+  cmdStep                 Number, magnitude of step change to perform
+------------------------------------------------------------------------------*/
+
+(pidLoopRef, testMinInterval:24h, testTaskFreq: 5min,
+ testMaxStandbyDuration:1wk, testMaxActiveDuration:1h,
+ minSignalNoiseRatio:5, cmdStep:30%) => do
+
+  // Normalize to record
+  pid: if (isRef(pidLoopRef)) readById(pidLoopRef) else pidLoopRef
+  if (pid.missing("pidLoop")) throw "Input record is missing pidLoop tag"
+  
+  // Exit if autoTest is false
+  if (pid.missing("autoTest") or not(pid->autoTest))
+    throw "Auto-testing is not enabled for this PID loop"
+  
+  // Load control variable record
+  cv: readById(pid->controlVariableRef)
+  
+  // If control variable is not writable, make it writable
+  if (cv.missing("writable") or cv.missing("bacnetWrite")
+      or cv.missing("bacnetWriteLevel") or cv->bacnetWriteLevel > 15)
+    try commit(diff(cv,
+      {writable,
+       bacnetWrite: cv->bacnetCur,
+       bacnetWriteLevel:
+         if (cv.has("bacnetWriteLevel") and cv->bacnetWriteLevel < 15)
+           cv->bacnetWriteLevel
+         else 15}))
+    catch (ex) throw {dis: "Control variable could not be set to writable. "
+                      + ex.dis() + ". "
+                      + "disabled auto-testing",
+                 autoTest: false}
+  
+  // Exit if there is an existing task associated with the selected pidLoop
+  exTask: read(task and pidLoopRef==pid->id, false)
+  if (exTask!=null)
+    throw "Auto-testing is in progress for PID loop"
+  
+  // Check testing needs
+  completedTests:
+  readAll(pidLoopTest and pidLoopRef==pid->id and success and not expired)
+  .findAll(r => (now() - r->endDateTime) < pid->autoTestExpiration)
+  // Compare to autoTestIncrements
+  if (completedTests.size >= pid->autoTestIncrements)
+    return "Auto-testing cycles complete"
+  
+  // If a test was recently completed, exit
+  recentTest: read(pidLoopTest and pidLoopRef==pid->id
+                   and endDateTime > (now() - testMinInterval), false)
+  if (recentTest != null)
+    throw "A test was recently completed"
+  
+  // Queue up a new test and create related task
+  newTestDict: {pidLoopTest,
+                pidLoopRef: pid->id,
+                created: now(),
+                maxStandbyDuration: testMaxStandbyDuration,
+                maxActiveDuration: testMaxActiveDuration,
+                minSignalNoiseRatio: minSignalNoiseRatio,
+                cmdStep: cmdStep}
+  
+  newTest: commit(diff(null, newTestDict, {add}))
+
+  newTaskDict: {
+    task,
+    dis: "FAC - Auto-testing for "+pid->controlVariableRef.refDis(),
+    taskExpr: "facPIDAutoTestTransientTask({pidLoopTestRef:@"+newTest->id+"})",
+    obsSchedule,
+    obsScheduleSpan: (now()..now()+testMaxStandbyDuration).toSpan,
+    obsScheduleFreq: 5min,
+    pidLoopRef: pid->id,
+    pidLoopTestRef: newTest->id}
+  
+  // If task creation fails, delete test record
+  try commit(diff(null, newTaskDict, {add}))
+  catch (ex) do
+    commit(diff(newTest, {trash}))
+    throw "Could not create task: " + ex->dis
+  end
+ 
+  // Return null on success
+  return "Auto-testing launched successfully"
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2021-02-08  Raphael Vitti
+    Created.
+------------------------------------------------------------------------------*/
