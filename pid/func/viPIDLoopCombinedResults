@@ -1,0 +1,163 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  For a selected PID loop recrod, create a table of PID loop test records 
+  formatted for display.
+  
+  Arguments: 
+  pidLoopRef      Id of PID loop record
+  testIncrements  Number of most recent successful tests to include in the
+                  analysis. If null, use all successful test results.
+------------------------------------------------------------------------------*/
+
+(pidLoopRef, testIncrements:null, tauMultiplier:2, alcInterval:60s) => do
+  /*----------------------------------------------------------------------------
+  // Initialize variables
+  ----------------------------------------------------------------------------*/
+  // Normalization to record
+  pidLoop: if (isRef(pidLoopRef)) readById(pidLoopRef) else pidLoopRef
+
+  // Build title
+  title: "Results for " + pidLoop->controlVariableRef.refDis
+
+  // Initialize grid
+  grid: readAll(pidLoopTest and pidLoopRef==pidLoop->id
+                and success and not expired)
+  // Filter out older tests
+  .findAll(r => (now() - r->endDateTime) < r->pidLoopRef->autoTestExpiration)
+  
+  // Escape if no successful PID loop tests are found
+  if(isEmpty(grid)) return {dis:"No successful results"}
+                           .toGrid()
+                           .addColMeta("dis", {dis: title})
+  
+  /*----------------------------------------------------------------------------
+  // Process test records: sort, select, add links to trends
+  ----------------------------------------------------------------------------*/
+  // Sort by endDateTime
+  grid= grid.sortr((a,b) => a->endDateTime <=> b->endDateTime)
+  
+  // Select most recent testIncrements if settings are valid
+  if (isNumber(testIncrements) and testIncrements>0
+      and grid.size>testIncrements)
+    grid= grid[0..testIncrements-1]          
+  
+  // Convert mod to Los_Angeles tz
+  grid= grid
+  .map(row => row.map((v,n) => if (n=="mod") v.toTimeZone("Los_Angeles")
+                               else v))
+
+  // Add link column
+  grid= grid.addCol("link", row => do
+    endDateTime: if (row.has("endDateTime")) row->endDateTime else now()
+    try uiLink({view: "tuningParameters",
+                state: {span: (row->tStable..endDateTime).toSpan(),
+                        points: [pidLoop["controlVariableRef"],
+                                 pidLoop["processVariableRef"]]
+                                .findAll(v => v!=null)}})
+    catch null
+  end)
+
+  // Add testIdentifier column
+  grid= grid.addCol("testIdentifier", row => row->created)
+
+  /*----------------------------------------------------------------------------
+  // Create summary results
+  ----------------------------------------------------------------------------*/
+  // Average out process measurements from selected test results
+  gp: grid.colToList("gp").fold(avg)
+  td: grid.colToList("td").fold(avg)
+  tau: grid.colToList("tau").fold(avg)
+
+  // Add summary row
+  grid= grid.addRow(
+    {testIdentifier: "Summary of " + grid.size + " successful tests",
+     created: now(),
+     gp: gp,
+     td: td,
+     tau: tau,
+     presentation: {fontWeight:"bold", background:"#ccffcc"}})
+
+  /*----------------------------------------------------------------------------
+  // For each row, including summary results, convert PID parameters
+  ----------------------------------------------------------------------------*/
+  // Conversions to ALC and JCI parameters for each row
+  grid= grid.map(r => do
+    gp: r->gp
+    td: r->td
+    tau: r->tau
+    
+    // Conversion to ALC PID gains, parallel algorithm
+    alcKp: (tau / (abs(gp) * (tauMultiplier * tau + td))).as(1)
+    alcKi: (alcInterval.to("s") / (abs(gp) * (tauMultiplier * tau + td))).as(1)
+    alcBlock: if (gp > 0) "Reverse Acting" else "Direct Acting"
+
+    // Conversion to JCI PID parameters
+    jciPb: ((-100% * gp * (tauMultiplier * tau + td)) / tau).as(1)
+    jciTi: (1 / tau.to("min")).as(1)  // DX9100
+    jciIt: (tau / 1.5s).as(1)         // UNT
+    
+    // Add to row
+    d: {alcKp: alcKp,
+        alcKi: alcKi,
+        alcInterval: alcInterval,
+        alcBlock: alcBlock,
+        jciPb: jciPb,
+        jciTi: jciTi,
+        jciIt: jciIt}
+    d.each((v,k) => r=r.set(k,v))
+    r
+  end)
+
+  /*----------------------------------------------------------------------------
+  // Formatting
+  ----------------------------------------------------------------------------*/
+  // Add title as testIdentifier column display name
+  grid= grid
+  .addColMeta("testIdentifier", {dis:title})
+  
+  // Add column formatting
+  .addColMeta("alcKp", {dis:"ALC Kp: proportional gain", format:"0.###"})
+  .addColMeta("alcKi", {dis:"ALC Ki: integral gain", format:"0.###"})
+  .addColMeta("alcInterval", {dis:"ALC interval"})
+  .addColMeta("alcBlock", {dis:"ALC PID Block"})
+  .addColMeta("jciPb", {dis:"JCI PB: proportional band", format:"#,###.#"})
+  .addColMeta("jciTi", {dis:"JCI TI: reset action (DX9100)", format:"0.###"})
+  .addColMeta("jciIt", {dis:"JCI IT: integral time (VMA / UNT)",
+                        format:"#,###.#"})
+  .addColMeta("gp", {dis:"Absolute process gain", format:"0.###"})
+  .addColMeta("tau", {dis:"Process time constant"})
+  .addColMeta("td", {dis:"Dead time"})
+
+  disCols: ["testIdentifier",
+            "alcKp","alcKi","alcInterval","alcBlock",
+            "jciPb","jciTi","jciIt",
+            "gp","tau","td","link"]
+           .findAll(v => grid.colNames.contains(v))
+  
+  return grid.keepCols(disCols)
+             .reorderCols(disCols)
+             .sortr((a,b) => a["created"] <=> b["created"])
+end
+/*------------------------------------------------------------------------------
+  Updates
+  2022-01-20  Raphael Vitti
+    Created.
+------------------------------------------------------------------------------*/
