@@ -1,0 +1,22 @@
+dis:PID Results
+appName:faultAutoCorrection
+depends:["viPIDLoopCombinedResults","viPIDLoopsList"]
+order:9
+package:fac-pid
+view:pidLoopsResults
+src:
+  view: {inherit:"tile"}
+  layout: {var kind:"Str" defVal:"grid 6x6; 0 0 6 4; 0 4 6 2"}
+  pidLoops: Trio:
+    view: {inherit:"table"}
+    uiViewBar: {var kind:"Dict" defVal:{} showVarLabels:T}
+    selectedId: {var bindSelect:"id"}
+    data: {expr:"viPIDLoopsList()"}
+  subView: Trio:
+    view: {inherit:"table"}
+    selectedLoopRef: {var input binding:"../pidLoops/selectedId"}
+    tauMultiplierStr: {var enum:"Slow tuning (lambda: 1),Slower tuning (lambda: 2),Slowest tuning (lambda: 3)" kind:"Str" input defVal:"Slower tuning (lambda: 2)"}
+    testIncrementsStr: {var enum:"Max number of tests: autoTestIncrements,Max number of tests: 2,Max number of tests: 3,Max number of tests: 5,Max number of tests: 10" kind:"Str" input defVal:"Max number of tests: autoTestIncrements"}
+    alcIntervalStr: {var enum:"ALC PID Refresh: 15s,ALC PID Refresh: 30s,ALC PID Refresh: 60s,ALC PID Refresh: 2min,ALC PID Refresh: 3min,ALC PID Refresh: 5min,ALC PID Refresh: 10min" kind:"Str" input defVal:"ALC PID Refresh: 60s"}
+    data: {expr:"viPIDLoopCombinedResults({{selectedLoopRef}},try reGroups(r\"Max number of tests: (\\d+)\",{{testIncrementsStr}})[1].parseNumber catch readById({{selectedLoopRef}})->autoTestIncrements,try reGroups(r\"\\w* tuning \\(lambda: (\\d)\\)\",{{tauMultiplierStr}})[1].parseNumber catch 2,try reGroups(r\"ALC PID Refresh: (\\d+\\w+)\",{{alcIntervalStr}})[1].parseNumber catch 60s)"}
+  
