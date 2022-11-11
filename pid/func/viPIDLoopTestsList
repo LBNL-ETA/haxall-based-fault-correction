@@ -18,7 +18,7 @@
   so.
 ------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------
-  For a selected PID loop recrod, create a table of PID loop test records 
+  For a selected PID loop record, create a table of PID loop test records 
   formatted for display.
   
   Arguments: 
