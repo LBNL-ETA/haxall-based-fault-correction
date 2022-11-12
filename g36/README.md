@@ -24,7 +24,7 @@ Components:
   can be loaded and committed to Folio as new records.
 
 Requirements for writing the setpoint to the BAS:
-Setpoint identified in each `resetSetting` record must be BACnet-writable
+- Setpoint identified in each `resetSetting` record must be BACnet-writable
 
 Tagging requirements for request generation:
 ```
