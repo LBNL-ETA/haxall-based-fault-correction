@@ -34,9 +34,8 @@ Tagging requirements for request generation:
 --- damper, cmd - "Damper Command", used for AHU supply air pressure setpoint
 ```
 
-Requirements for ignored request functionality:
 Zone requests for higher or lower AHU SAT can be ignored dynamically based on
-the recent results of sparkRules.
+the recent results of sparkRules (optional functionality).
 In order for a specific `sparkRule` to be taken into consideration at the
 zone-space or equip level, it must be configured with the following tag(s):
 ```
