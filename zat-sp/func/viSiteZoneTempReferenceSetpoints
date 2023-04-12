@@ -1,0 +1,97 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  Display current generalized occupied and unoccupied heating and cooling
+  setpoints for each terminal unit in a selected building
+  
+  Arguments:
+  siteRef     Id of selected site
+------------------------------------------------------------------------------*/
+
+(siteRef) => do
+  // Normalize input to id
+  siteRef= try if(isRef(siteRef)) siteRef else siteRef->id
+           catch throw "Input siteRef must be an id or record"
+  
+  // Build grid of current and design temperature setpoint values
+  out: readAll(supply and airTerminalUnit and siteRef==siteRef)
+  .sortDis
+  .map(r => viZoneTempSetpoints(r).set("equipRef",r->id))
+  
+  // Exit if empty
+  if (isEmpty(out)) return {noData:"Found zero points with required tags"}
+                           .toGrid
+  
+  // Setpoint columns
+  spCols: ["curOccHtg","curOccClg","curUnoccHtg","curUnoccClg",
+           "refOccHtg","refOccClg","refUnoccHtg","refUnoccClg"]
+  
+  // Cycle through rows, and create presentation grid
+  presentation: {}.toGrid()
+  out.each((row, i) => do
+    // Highlight discrepancies between current values and design values
+    missingReferenceColor: "darkgrey"
+    matchColor: "palegreen"
+    discrepancyColor: "lightcoral"
+    
+    // Incomplete rows
+    if (spCols.any(v => row.missing(v)))
+      presentation= presentation
+      .addRow({row:i, background:missingReferenceColor})
+      
+    // Perfect matches
+    else if (row->curUnoccHtg==row->refUnoccHtg and
+        row->curUnoccClg==row->refUnoccClg and
+        row->curOccHtg==row->refOccHtg and
+        row->curOccClg==row->refOccClg)
+      presentation= presentation
+      .addRow({row:i, background:matchColor})
+    
+    // Discrepancies
+    else
+      presentation= presentation
+      .addRow({row:i, col:"curOccHtg",
+               background: if (row->curOccHtg==row->refOccHtg) matchColor
+                           else discrepancyColor})
+      .addRow({row:i, col:"curOccClg",
+               background: if (row->curOccClg==row->refOccClg) matchColor
+                           else discrepancyColor})
+      .addRow({row:i, col:"curUnoccHtg",
+               background: if (row->curUnoccHtg==row->refUnoccHtg) matchColor
+                           else discrepancyColor})
+      .addRow({row:i, col:"curUnoccClg",
+               background: if (row->curUnoccClg==row->refUnoccClg) matchColor
+                           else discrepancyColor})
+  end)
+  // Add presentation grid to spaces meta
+  out= out
+  .addMeta({presentation:presentation})
+  
+  // Hide id and mod columns
+  if (out.colNames.contains("id"))
+    out= out.addColMeta("id", {hidden})
+            .addColMeta("mod", {hidden})
+    
+  // Reorder columns
+  out= out
+  .reorderCols(["id","equipRef","mod"]
+               .addAll(spCols)
+               .findAll(v => out.colNames.contains(v)))
+end
