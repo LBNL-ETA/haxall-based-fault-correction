@@ -1,0 +1,49 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  Validate new or modified referenceZoneTemps record.
+  Associated with template=="referenceZoneTemps"
+  
+  Arguments: 
+  rec          Dictionary to validate
+------------------------------------------------------------------------------*/
+
+(rec) => do
+  // Required tags
+  reqTags: ["equipRef","refOccHtg","refOccClg","refUnoccHtg","refUnoccClg"]
+  
+  // Optional tags
+  optTags: ["id","mod"]
+  
+  // Check for required tags, include original dict and sparse edit dict
+  testDict: if (rec.has("id")) readById(rec->id) else {}
+  rec.each((v,k) => testDict= testDict.set(k,v))
+  if (reqTags.any(v => testDict.missing(v))) throw "Missing a required tag"
+  
+  // Check values follow the expected structure
+  if (testDict->refUnoccHtg > testDict->refOccHtg or
+      testDict->refOccHtg > testDict->refOccClg or
+      testDict->refOccClg > testDict->refUnoccClg)
+    throw "Input values do not meet requirement " +
+          "refUnoccHtg ≤ refOccHtg ≤  refOccClg ≤ refUnoccClg"
+
+  // Filter out unexpected tags
+  rec= rec.findAll((v,k) => reqTags.addAll(optTags).contains(k))
+end
