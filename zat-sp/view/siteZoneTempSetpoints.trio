@@ -1,0 +1,9 @@
+dis:Temperature Setpoints
+appName:setpoints
+view:siteZoneTempSetpoints
+src:
+  view: {inherit:"table"}
+  site: {var kind:"Ref<site>" input}
+  references: {dis:"Edit Reference Temperatures" action:"recEditReferenceZoneTemps" select refresh}
+  push: {dis:"Push Reference Temperatures" action:"recPushReferenceZoneTemps" select refresh}
+  data: {expr:"viSiteZoneTempReferenceSetpoints({{site}})"}
