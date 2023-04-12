@@ -1,0 +1,12 @@
+dis:Reference Generalized Zone Temperature Setpoints
+tags:
+  equipRef: {kind:"Ref<equip>" navAuxFilter:"supply and airTerminalUnit"}
+  refOccHtg: {kind:"Number" defVal:68°F}
+  refOccClg: {kind:"Number" defVal:74°F}
+  refUnoccHtg: {kind:"Number" defVal:64°F}
+  refUnoccClg: {kind:"Number" defVal:78°F}
+  curOccHtg: {kind:"Number" hidden}
+  curOccClg: {kind:"Number" hidden}
+  curUnoccHtg: {kind:"Number" hidden}
+  curUnoccClg: {kind:"Number" hidden}
+template:referenceZoneTemps
