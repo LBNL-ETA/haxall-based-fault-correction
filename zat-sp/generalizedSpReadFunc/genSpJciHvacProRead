@@ -1,0 +1,69 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  Return current generalized occupied and unoccupied heating and cooling
+  setpoints for a selected terminal unit with JCI HVAC Pro zone temperature
+  controls.
+
+  Generalized inputs, excluding occupant adjustments and demand controls:
+  These points have fixed values over long periods of time, and they do not 
+  reflect occupant adjustments at the thermostats.
+  - Occupied Heating Setpoint
+  - Occupied Cooling Setpoint
+  - Unoccupied Heating Setpoint
+  - Unoccupied Cooling Setpoint
+
+  Arguments:
+  equipRef           Id of selected terminal unit
+  span               Span over which to read setpoint trends. Only the most
+                     recent value is used
+  limit              Maxuimum number of trending points to load
+  hisRollupInterval  Number, time for rollup to align multiple his
+------------------------------------------------------------------------------*/
+
+(equipRef, span: today(), limit:10000, hisRollupInterval:5min) => do
+ 
+  // Normalize input to id
+  equipRef= try if(isRef(equipRef)) equipRef else equipRef->id
+           catch throw "Input equipRef must be an id or record"
+  
+  // Retrieve zone temperature controller inputs by tags
+  occHtgBiasPt: read(occHtgOffsetFromAvgTempSp and sp
+                     and (equipRef==equipRef or equipRef->equipRef==equipRef))
+  occClgBiasPt: read(occClgOffsetFromAvgTempSp and sp
+                     and (equipRef==equipRef or equipRef->equipRef==equipRef))
+  unoccHtgBiasPt: read(unoccHtgOffsetFromAvgTempSp and sp
+                       and (equipRef==equipRef or equipRef->equipRef==equipRef))
+  unoccClgBiasPt: read(unoccClgOffsetFromAvgTempSp and sp
+                       and (equipRef==equipRef or equipRef->equipRef==equipRef))
+  commonSpPt: read(zone and air and temp and avgTempSp and sp 
+                   and (equipRef==equipRef or equipRef->equipRef==equipRef))      
+
+  // Load current values
+  [occHtgBiasPt, occClgBiasPt, unoccHtgBiasPt, unoccClgBiasPt, commonSpPt]
+  .connSyncCur
+  .futureWaitForAll
+
+  // Calculate generalized setpoints
+  {curOccHtg: commonSpPt["curVal"] + occHtgBiasPt["curVal"],
+   curOccClg: commonSpPt["curVal"] + occClgBiasPt["curVal"],
+   curUnoccHtg: commonSpPt["curVal"] + unoccHtgBiasPt["curVal"],
+   curUnoccClg: commonSpPt["curVal"] + unoccClgBiasPt["curVal"]}
+end
