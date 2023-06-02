@@ -32,6 +32,7 @@ https://doi.org/10.1016/j.buildenv.2022.108900
 - Improve AHU static pressure setpoint reset - see folder `g36`
 - Improve AHU supply air temperature setpoint reset - see folder `g36`
 - Neutralize rogue zones in reset - included in `g36`
+- Revert zone temperature setpoints - included in `zat-sp`
 
 Axon and Folio are part of Haxall, an open source framework (https://haxall.io/),
 however, some of the code in this package relies upon BACnet libraries and
