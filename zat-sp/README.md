@@ -66,10 +66,7 @@ These points have fixed values over long periods of time, and they do not reflec
 
 
 ![alt_text](images/image1.png "image_tooltip")
-
-
-
-Screenshot of Temperature Setpoints view for B91 - only one supply terminal unit is configured in this project
+Figure 1: Screenshot of Temperature Setpoints view for B91 - only one supply terminal unit is configured in this project
 
 The Temperature Setpoints view highlights in red the current setpoints if they deviate from the reference. It highlights in green the current setpoints that match the reference, and the entire row if all setpoints match their references.
 
@@ -91,10 +88,7 @@ Reference values are stored in folio records, one per terminal unit. The associa
 
 
 ![alt_text](images/image2.png "image_tooltip")
-
-
-
-Sample referenceZoneTemps record for B91 SVAV-110
+Figure 2: Sample referenceZoneTemps record for B91 SVAV-110
 
 
 
@@ -102,10 +96,7 @@ Sample referenceZoneTemps record for B91 SVAV-110
 
 
 ![alt_text](images/image3.png "image_tooltip")
-
-
-
-Template for referenceZoneTemps
+Figure 3: Template for referenceZoneTemps
 
 
 ## Current Values
@@ -120,10 +111,7 @@ Function viZoneTempSetpoints loads reference values from folio based on the id o
 
 
 ![alt_text](images/image4.png "image_tooltip")
-
-
-
-Sample supply airTerminalUnit equip, with generalizedSpReadFunc
+Figure 4: Sample supply airTerminalUnit equip, with generalizedSpReadFunc
 
 Functions that can be used as generalizedSpReadFunc must meet the following requirements:
 
@@ -147,10 +135,7 @@ The output dictionary must use the specified keys for the current values of gene
 
 
 ![alt_text](images/image5.png "image_tooltip")
-
-
-
-Sample generalizedSpReadFunc for ALC - no conversion needed
+Figure 5: Sample generalizedSpReadFunc for ALC - no conversion needed
 
 
 ## Correction Values
@@ -178,10 +163,7 @@ The dedicated functions are tasked with
 
 
 ![alt_text](images/image6.png "image_tooltip")
-
-
-
-Sample generalizedSpWriteFunc for ALC - no conversion needed
+Figure 6: Sample generalizedSpWriteFunc for ALC - no conversion needed
 
 
 ## Setup Notes
@@ -200,9 +182,7 @@ Set generalizedSpReadFunc and generalizedSpWriteFunc tags on existing supply ter
 
 
 ![alt_text](images/image7.png "image_tooltip")
-
-
-Modifying existing supply airTerminalUnit records to add generalizedSpReadFunc
+Figure 7: Modifying existing supply airTerminalUnit records to add generalizedSpReadFunc
 
 Inputs already configured as writable at B91
 
@@ -214,10 +194,7 @@ Set reference temperatures, using the view
 
 
 ![alt_text](images/image8.png "image_tooltip")
-
-
-
-Using the Edit Reference Temperatures button to set the reference temperatures for a zone
+Figure 8: Using the Edit Reference Temperatures button to set the reference temperatures for a zone
 
 Push reference temperatures to the BMS, using the view
 
@@ -227,10 +204,7 @@ Push reference temperatures to the BMS, using the view
 
 
 ![alt_text](images/image9.png "image_tooltip")
-
-
-
-Trends in ALC show changes in setpoint around 11:15, reversed manually after a few minutes
+Figure 9: Trends in ALC show changes in setpoint around 11:15, reversed manually after a few minutes
 
 This generates a fairly long audit log note in ALC
 
@@ -240,7 +214,4 @@ This generates a fairly long audit log note in ALC
 
 
 ![alt_text](images/image10.png "image_tooltip")
-
-
-
-## Audit log in ALC after zone temperature setpoint correction
+Figure 10: Audit log in ALC after zone temperature setpoint correction
