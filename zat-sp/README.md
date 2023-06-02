@@ -69,7 +69,7 @@ These points have fixed values over long periods of time, and they do not reflec
 
 
 
-## Screenshot of Temperature Setpoints view for B91 - only one supply terminal unit is configured in this project
+Screenshot of Temperature Setpoints view for B91 - only one supply terminal unit is configured in this project
 
 The Temperature Setpoints view highlights in red the current setpoints if they deviate from the reference. It highlights in green the current setpoints that match the reference, and the entire row if all setpoints match their references.
 
