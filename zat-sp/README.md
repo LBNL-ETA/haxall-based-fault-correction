@@ -49,7 +49,7 @@ Conversion notes:
 
 The Temperature Setpoints view displays all supply terminal units for a selected site, along with their related generalized zone temperature setpoints - both current values and reference values.
 
-[These generalized values exclude occupant adjustments and demand controls](https://docs.google.com/document/d/1IDIcmwEAHroG4tCAEJE1OfhH8yeiP3bLEiG2eRmfIj4/edit#heading=h.q8o5us9gnu58), they are:
+These generalized values exclude occupant adjustments and demand controls, they are:
 
 
 
@@ -94,7 +94,7 @@ Reference values are stored in folio records, one per terminal unit. The associa
 
 
 
-## Sample referenceZoneTemps record for B91 SVAV-110
+Sample referenceZoneTemps record for B91 SVAV-110
 
 
 
@@ -105,7 +105,7 @@ Reference values are stored in folio records, one per terminal unit. The associa
 
 
 
-## Template for referenceZoneTemps
+Template for referenceZoneTemps
 
 
 ## Current Values
@@ -123,7 +123,7 @@ Function viZoneTempSetpoints loads reference values from folio based on the id o
 
 
 
-## Sample supply airTerminalUnit equip, with generalizedSpReadFunc
+Sample supply airTerminalUnit equip, with generalizedSpReadFunc
 
 Functions that can be used as generalizedSpReadFunc must meet the following requirements:
 
@@ -150,7 +150,7 @@ The output dictionary must use the specified keys for the current values of gene
 
 
 
-## Sample generalizedSpReadFunc for ALC - no conversion needed
+Sample generalizedSpReadFunc for ALC - no conversion needed
 
 
 ## Correction Values
@@ -181,7 +181,7 @@ The dedicated functions are tasked with
 
 
 
-## Sample generalizedSpWriteFunc for ALC - no conversion needed
+Sample generalizedSpWriteFunc for ALC - no conversion needed
 
 
 ## Setup Notes
@@ -202,8 +202,7 @@ Set generalizedSpReadFunc and generalizedSpWriteFunc tags on existing supply ter
 ![alt_text](images/image7.png "image_tooltip")
 
 
-
-## Modifying existing supply airTerminalUnit records to add generalizedSpReadFunc
+Modifying existing supply airTerminalUnit records to add generalizedSpReadFunc
 
 Inputs already configured as writable at B91
 
@@ -218,7 +217,7 @@ Set reference temperatures, using the view
 
 
 
-## Using the Edit Reference Temperatures button to set the reference temperatures for a zone
+Using the Edit Reference Temperatures button to set the reference temperatures for a zone
 
 Push reference temperatures to the BMS, using the view
 
@@ -231,7 +230,7 @@ Push reference temperatures to the BMS, using the view
 
 
 
-## Trends in ALC show changes in setpoint around 11:15, reversed manually after a few minutes
+Trends in ALC show changes in setpoint around 11:15, reversed manually after a few minutes
 
 This generates a fairly long audit log note in ALC
 
