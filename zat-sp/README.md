@@ -1,6 +1,14 @@
 
 
 ## Introduction
+This collection of Axon code and Folio records includes all the components needed to 
+replicate the active control hunting fault auto-correction algorithm presented here:
+https://doi.org/10.1016/j.buildenv.2022.108900
+
+Axon and Folio are part of Haxall, an open source framework (https://haxall.io/),
+however, some of the code in this package relies upon BACnet libraries and
+functionalities that are only available in SkySpark (https://skyfoundry.com/product)
+which requires obtaining a paid license.
 
 The Temperature Setpoints view displays all supply terminal units for a selected site, along with their related generalized zone temperature setpoints - both current values and reference values.
 
