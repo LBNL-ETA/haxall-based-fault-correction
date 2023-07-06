@@ -15,8 +15,13 @@ Components:
 - Files (`file`) are provided containing reference data for the provided functions. Files can be manually added to the `proj/projName/io` directory or uploaded via the Haxall or Skyspark UI.
 
 
-This framework identifies the ASHRAE Climate Region that the AHU resides in by extracting the zip code from the AHU's `siteRef->geoAddr` and performing a lookup from the file `FIPS_v4.csv`. This file was created by combining Climate Zone and FIPS data from https://gist.github.com/philngo/d3e251040569dba67942 with FIPS and Zip Code data from https://www.kaggle.com/datasets/danofer/zipcodes-county-fips-crosswalk
+This framework identifies the ASHRAE Climate Region that the AHU resides in by extracting the zip code from the AHU's `siteRef->geoAddr` and performing a lookup from the file `FIPS_v4.csv`. This file was created by combining the following data sources:
+1. Climate Zone and FIPS data from https://gist.github.com/philngo/d3e251040569dba67942  
+2. FIPS and Zip Code data from https://www.kaggle.com/datasets/danofer/zipcodes-county-fips-crosswalk 
+3. Economizer Lockout Setpoints per ASHRAE 90.1 from https://tayloreng.egnyte.com/dl/mN0c9t4WSO/ASHRAE_Journal_-_Economizer_High_Limit_Devices_and_Why_Enthalpy_Economizers_Dont_Work.pdf_
 
 
-
-outside and air and temp and disable and sp and equipRef->economizer
+Tagging requirements for Economizer Lockout Setpoint:
+```
+outside, air, temp, disable, sp, equipRef->economizer
+```
