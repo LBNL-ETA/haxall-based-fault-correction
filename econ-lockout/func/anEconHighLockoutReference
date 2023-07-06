@@ -1,0 +1,39 @@
+/*------------------------------------------------------------------------------
+  For a given AHU, use site geo information to determine the reference
+  economizer high OAT lockout setpoint that should be used for optimal operation
+
+  Arguments:
+  equipRef     Id of selected AHU
+------------------------------------------------------------------------------*/
+
+(equipRef) => do
+  // Normalize input to rec
+  equip: try if(isRef(equipRef)) readById(equipRef) else equipRef
+         catch throw "Input equipRef must be an id or record"
+
+  // Use site information to determine reference setpoint (per ASHRAE 90.1)
+  zipcode: try reGroups(r".*[A-Z]{2} (\d{5}).*",equip->siteRef->geoAddr)[1]
+           catch return null
+  
+  // Lookup table
+  sps:[{zipcode:"94701", sp:75°F},
+       {zipcode:"94702", sp:75°F},
+       {zipcode:"94703", sp:75°F},
+       {zipcode:"94704", sp:75°F},
+       {zipcode:"94705", sp:75°F},
+       {zipcode:"94706", sp:75°F},
+       {zipcode:"94707", sp:75°F},
+       {zipcode:"94708", sp:75°F},
+       {zipcode:"94720", sp:75°F}
+      ].toGrid()
+  
+  // Match
+  try sps.find(r => r->zipcode==zipcode)->sp
+  catch null
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2023-01-13  Raphael Vitti
+    Created.
+------------------------------------------------------------------------------*/
