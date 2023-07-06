@@ -1,0 +1,132 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  For a selected AHU and span, show available run cmd and run sensor history
+  data, as well as speed data, one or two levels below AHU equip.
+  
+  Arguments: 
+  ahuRef              ref, id of the AHU
+  span                dateSpan, dates of data to display
+  hisRollupInterval   Number, time for rollup to align multiple his
+  limit               Number, limit for hisRead
+  warmupTime          Duration that is considered warmup before schedule start
+------------------------------------------------------------------------------*/
+
+(ahuRef, span: pastMonth(), hisRollupInterval:15min, limit:10000,
+ warmupTime: 4hr) => do
+
+  // Process ahuRef to accept id or record
+  ahuId: if (isRef(ahuRef)) ahuRef
+         else try ahuRef->id
+         catch throw "Input: ahuRef is neither a ref nor a record"
+
+  // Load AHU record for summary status display
+  ahu: xq()
+       .xqUseReplicas()
+       .xqReadByIds([ahuId])
+       .xqExecute
+       .first
+  
+  // Locate target schedule if available, load trends
+  sP: xq()
+  .xqReadAll(point and run and sp and his and equipRef==ahuId)
+  .xqExecute
+  .first
+       
+  hisGrid: xq()
+  .xqReadAll(point and run and sp and his and equipRef==ahuId)
+  .xqHisRead(span, {limit:limit})
+  .xqExecute
+  
+  // Exit if no target schedule
+  if (hisGrid==null or isEmpty(hisGrid))
+    return {}.toGrid.addMeta({noData: "Selected AHU has no target schedule."})
+
+  // Override default settings based on point tags (optional)
+  warmupTime= if (sP.has("alarmWarmupTime")) sP->alarmWarmupTime
+              else warmupTime
+
+  // Fold with foldAny
+  hisGrid= hisGrid.hisRollup(foldAny, hisRollupInterval)
+
+  // Determine observed status
+  anAhuStatusHisGrid: anAhuStatusHisXq(ahu, span, hisRollupInterval, limit)
+  
+  // Exit if observed status can't be determined
+  if (anAhuStatusHisGrid==null or isEmpty(anAhuStatusHisGrid)
+      or anAhuStatusHisGrid.col("v0").meta.has("missing")) return null
+  
+  // Create periods
+  targetOn: hisGrid.hisFindPeriods(v => v)
+                   .hisPeriodShift(0min, hisRollupInterval)
+  targetOff: hisGrid.hisFindPeriods(v => not(v))
+                    .hisPeriodShift(hisRollupInterval, 0min)
+  targetOffMain: targetOff.hisPeriodShift(0min, -warmupTime)
+  targetOffWarmUp: hisPeriodMatrix([targetOffMain, targetOff])
+                   .findAll(r => not(r->v0) and r->v1)
+                   .keepCols(["ts","dur"])
+  observedOn: anAhuStatusHisGrid.hisFindPeriods(v => v)
+  observedOff: anAhuStatusHisGrid.hisFindPeriods(v => not(v))
+
+  // Intersections: Target OFF, outside warm-up allowance, AHU ON
+  targetOffMainObservedOn: hisPeriodIntersection([targetOffMain, observedOn])
+  targetOffMainObservedOn= targetOffMainObservedOn
+  .addColMeta("v0", {dis: "Target OFF Outside Warm-Up, Observed ON ("
+                          + targetOffMainObservedOn.foldCol("v0", sum) + ")",
+                     color: "blueviolet"})
+
+  // Intersections: Target OFF, within warm-up allowance, AHU ON
+  targetOffWarmObservedOn: hisPeriodIntersection([targetOffWarmUp, observedOn])
+  targetOffWarmObservedOn= targetOffWarmObservedOn
+  .addColMeta("v0", {dis: "Target OFF within Warm-Up Period, Observed ON ("
+                          + targetOffWarmObservedOn.foldCol("v0", sum) + ")",
+                     color:"deepskyblue"})
+
+  // Intersections: Target ON, AHU OFF
+  targetOnObservedOff: hisPeriodIntersection([targetOn, observedOff])
+  targetOnObservedOff= targetOnObservedOff
+  .addColMeta("v0", {dis: "Target ON, Observed OFF ("
+                          + targetOnObservedOff.foldCol("v0", sum) + ")",
+                     color:"firebrick"})
+
+  // Join hisGrids
+  hisGrid= hisJoin([hisGrid,
+                    anAhuStatusHisGrid,
+                    targetOffMainObservedOn,
+                    targetOffWarmObservedOn,
+                    targetOnObservedOff,
+                   ]
+                   .findAll(v => v != null))
+ 
+  // Format
+  hisGrid= hisGrid
+  .toolHisGridShowGaps(2*hisRollupInterval)
+  
+  // Return
+  hisGrid.addMeta({title:"Schedule Comparison"})
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2022-02-24  Raphael Vitti
+    Created.
+  2023-08-01  Raphael Vitti
+    Added override of warmupTime based on optional tag on target schedule point.
+------------------------------------------------------------------------------*/

@@ -1,0 +1,92 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  For a selected AHU and span, review available run cmd and run sensor history
+  data, and return one status history trend. If several trends are available
+  at the same priority level, summarize them with foldAny.
+  
+  Trends must be boolean. Non-boolean points are excluded.
+  
+  Priority, currently all equal:
+  AHU run sensor = Supply fan run sensor = AHU run cmd = Supply fan run cmd
+    
+  Arguments: 
+  ahuRef              ref, id of the AHU
+  span                dateSpan, dates of data to display
+  hisRollupInterval   Number, time for rollup to align multiple his
+  limit               Number, limit for hisRead
+  debug               Bool, if true return all identified trends
+------------------------------------------------------------------------------*/
+
+(ahuRef, span: yesterday(), hisRollupInterval:15min, limit:10000,
+ debug:false) => do
+
+  // Process ahuRef to accept id or record
+  ahuId: if (isRef(ahuRef)) ahuRef
+         else try ahuRef->id
+         catch throw "Input: ahuRef is neither a ref nor a record"
+
+  // Locate points of interest (down to three levels below AHU),
+  // load trends and roll up
+  hisGrid: xq()
+  .xqUseReplicas()
+  .xqReadAll(point and his and (equipRef==ahuId or equipRef->equipRef==ahuId 
+                                or equipRef->equipRef->equipRef==ahuId)
+             and run and (cmd or sensor) and kind=="Bool"
+             and not hisFunc)
+  .xqHisRead(span, {limit:limit})
+  .xqExecute
+  
+  // Default return grid: valid his grid with NA
+  defRet: {ts:span.toSpan.start, v0:na()}
+          .toGrid
+          .addMeta({hisStart: span.toSpan.start,
+                    hisEnd: span.toSpan.end})
+          .addColMeta("v0", {dis: ahuId.refDis + " Run Summary - Missing",
+                             hisMode: "cov",
+                             kind:"Bool",
+                             missing})
+  
+  // If hisGrid is empty, return default
+  if (isEmpty(hisGrid)) return defRet
+  
+  // Perform rollup
+  try hisGrid= hisGrid.hisRollup(foldAny, hisRollupInterval)
+  // If rollup is not successful, return 
+  catch return defRet
+  
+  // Output all identified trends for debug
+  if (debug==true) return hisGrid
+  // Fold into one trend
+  else hisGrid= hisGrid.hisFoldCols(foldAny)
+  
+  // Add metadata if  there is a resulting trend, hisFoldCols defaults to v0
+  if (hisGrid.has("v0"))
+    hisGrid= hisGrid.addColMeta("v0", {dis: ahuId.refDis + " Run Summary",
+                                       kind:"Bool"})
+  
+  hisGrid
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2022-01-26  Raphael Vitti
+    Created.
+------------------------------------------------------------------------------*/
