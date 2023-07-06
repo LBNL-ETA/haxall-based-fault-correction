@@ -19,7 +19,7 @@ Components:
 This framework identifies the ASHRAE Climate Region in which the AHU resides by extracting the zip code from the AHU's `siteRef->geoAddr` and performing a lookup from the file `FIPS_v4.csv`. This file was created by combining the following data sources:
 1. Climate Zone and FIPS data from https://gist.github.com/philngo/d3e251040569dba67942  
 2. FIPS and Zip Code data from https://www.kaggle.com/datasets/danofer/zipcodes-county-fips-crosswalk 
-3. Economizer Lockout Setpoints per ASHRAE 90.1 from https://tayloreng.egnyte.com/dl/mN0c9t4WSO/ASHRAE_Journal_-_Economizer_High_Limit_Devices_and_Why_Enthalpy_Economizers_Dont_Work.pdf_
+3. Economizer Lockout Setpoints per ASHRAE 90.1 from https://tayloreng.egnyte.com/dl/mN0c9t4WSO/ASHRAE_Journal_-_Economizer_High_Limit_Devices_and_Why_Enthalpy_Economizers_Dont_Work.pdf
   
 
 
