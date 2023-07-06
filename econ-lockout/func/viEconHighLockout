@@ -8,8 +8,8 @@
 () => do
   // Query high lockout setpoints for economizers
   pts: readAll(outside and air and temp and disable and sp
-               and equipRef->economizer)
-               
+               and equipRef->economizer and cur)
+  
   // Sync current values, block until all complete or timeout
   pts.connSyncCur().each f => f.futureGet(1s)
 
@@ -63,4 +63,6 @@ end
   Updates
   2023-06-21  Raphael Vitti
     Created.
+  2023-07-06  Chris Weyandt
+    Added `cur` requirement to initial pts read
 ------------------------------------------------------------------------------*/

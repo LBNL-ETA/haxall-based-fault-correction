@@ -17,7 +17,7 @@
   if (not(isNumber(targetVal))) return null
   
   // If connector is BACnet, attempt to change RELINQUISH_DEFAULT value
-  if (rec.has("bacnetConnRef"))
+  if (rec.has("bacnetConnRef") and rec.has("bacnetCur"))
     try rec->bacnetConnRef.bacnetWriteObjectProperty(rec,
                                                      "RELINQUISH_DEFAULT",
                                                      targetVal)
@@ -31,4 +31,6 @@ end
   Updates
   2023-06-21  Raphael Vitti
     Created.
+  2023-07-06  Chris Weyandt
+    Added `bacnetCur` requirement for writing
 ------------------------------------------------------------------------------*/

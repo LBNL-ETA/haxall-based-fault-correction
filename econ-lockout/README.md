@@ -6,13 +6,17 @@ however, some of the code in this package relies upon BACnet libraries and
 functionalities that are only available in SkySpark (https://skyfoundry.com/product) which requires obtaining a paid license.
 
 
-This framework adjusts the economizer outside air temperature lockout setpoint for an air handling unit, if the setpoint is accessible via BACnet. 
+This framework adjusts the economizer outside air temperature lockout setpoint for an air handling unit (AHU), if the setpoint is accessible via BACnet. 
 
 Components:
 - Functions (`func`) are provided in individual text files that contain the source of each function. Function records, including the `func` and `dis` tags, must be created manually.
 - Views (`view`) are provided in individual trio files that contain the entire `view` record, including the `src` and all other view record tags. They can be loaded and committed to Folio as new records.
 - Templates (`template`) are provided in individual trio files that contain the entire `template` record, including the `tags` and all other template record tags. They can be loaded and committed to Folio as new records.
-- Files (`file`) are provided containing reference data for the provided functions. Files can be manually added to the `proj/io` directory or uploaded via the Haxall or Skyspark UI.
+- Files (`file`) are provided containing reference data for the provided functions. Files can be manually added to the `proj/projName/io` directory or uploaded via the Haxall or Skyspark UI.
+
+
+This framework identifies the ASHRAE Climate Region that the AHU resides in by extracting the zip code from the AHU's `siteRef->geoAddr` and performing a lookup from the file `FIPS_v4.csv`. This file was created by combining Climate Zone and FIPS data from https://gist.github.com/philngo/d3e251040569dba67942 with FIPS and Zip Code data from https://www.kaggle.com/datasets/danofer/zipcodes-county-fips-crosswalk
+
 
 
 outside and air and temp and disable and sp and equipRef->economizer
