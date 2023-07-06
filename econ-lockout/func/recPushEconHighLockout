@@ -1,0 +1,36 @@
+/*------------------------------------------------------------------------------
+  For selected economizer high OAT lockout setpoint, determine optimized
+  target setpoint and write value to point.
+  
+  Arguments: 
+  sel          id of selected economizer high OAT lockout point
+------------------------------------------------------------------------------*/
+
+(sel) => do
+  // Normalize action input to obtain economizer lockout point
+  rec: readById(actionNormInput(sel, "id"))
+
+  // Determine target setpoint
+  targetVal: anEconHighLockoutReference(rec->equipRef)
+  
+  // Exit if targetVal is null or not a number
+  if (not(isNumber(targetVal))) return null
+  
+  // If connector is BACnet, attempt to change RELINQUISH_DEFAULT value
+  if (rec.has("bacnetConnRef") and rec.has("bacnetCur"))
+    try rec->bacnetConnRef.bacnetWriteObjectProperty(rec,
+                                                     "RELINQUISH_DEFAULT",
+                                                     targetVal)
+    catch null
+    
+  // Write to point at pre-configured level
+  pointWrite(rec, targetVal, 16, "recPushEconHighLockout")
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2023-06-21  Raphael Vitti
+    Created.
+  2023-07-06  Chris Weyandt
+    Added `bacnetCur` requirement for writing
+------------------------------------------------------------------------------*/

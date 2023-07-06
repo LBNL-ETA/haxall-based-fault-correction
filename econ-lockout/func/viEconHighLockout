@@ -1,0 +1,68 @@
+/*------------------------------------------------------------------------------
+  Display current economizer high lockout OAT setpoints.
+  
+  Arguments:
+  N/A
+------------------------------------------------------------------------------*/
+
+() => do
+  // Query high lockout setpoints for economizers
+  pts: readAll(outside and air and temp and disable and sp
+               and equipRef->economizer and cur)
+  
+  // Sync current values, block until all complete or timeout
+  pts.connSyncCur().each f => f.futureGet(1s)
+
+  // Add target setpoint
+  pts= pts.addCol("targetVal", r => anEconHighLockoutReference(r->equipRef))
+
+  // Add empty row so addColMeta doesn't fail
+  pts= pts.addRow({id:null, curVal:null, targetVal:null})
+
+  // Cycle through rows, and create presentation grid
+  presentation: {}.toGrid()
+  pts.each((row, i) => do
+    // Highlight discrepancies between current values and design values
+    missingReferenceColor: "darkgrey"
+    matchColor: "palegreen"
+    discrepancyColor: "lightcoral"
+    
+    // Incomplete rows
+    if (row.missing("targetVal"))
+      presentation= presentation
+      .addRow({row:i, col:"curVal", background:missingReferenceColor})
+      .addRow({row:i, col:"targetVal", background:missingReferenceColor})
+      
+    // Matches
+    else if (row->curVal==row->targetVal)
+      presentation= presentation
+      .addRow({row:i, col:"curVal", background:matchColor})
+      .addRow({row:i, col:"targetVal", background:matchColor})
+      
+    // Discrepancies
+    else
+      presentation= presentation
+      .addRow({row:i, col:"curVal", background:discrepancyColor})
+      .addRow({row:i, col:"targetVal", background:discrepancyColor})
+  end)
+
+  // Add formatting
+  pts= pts
+  .addColMeta("id", {dis:"Economizer High OAT Lockout Setpoint"})
+  .addColMeta("curVal", {dis:"Current"})
+  .addColMeta("targetVal", {dis:"Optimized Target"})
+  .addMeta({presentation:presentation})
+
+  // Build table for display
+  pts
+  .findAll(r => r.has("id"))
+  .toolFormatGrid(["id","curVal","targetVal"])
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2023-06-21  Raphael Vitti
+    Created.
+  2023-07-06  Chris Weyandt
+    Added `cur` requirement to initial pts read
+------------------------------------------------------------------------------*/

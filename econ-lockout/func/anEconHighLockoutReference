@@ -1,0 +1,35 @@
+/*------------------------------------------------------------------------------
+  For a given AHU, use site geo information to determine the reference
+  economizer high OAT lockout setpoint that should be used for optimal operation
+
+  Arguments:
+  equipRef     Id of selected AHU
+------------------------------------------------------------------------------*/
+
+(equipRef) => do
+  // Normalize input to rec
+  equip: try if(isRef(equipRef)) readById(equipRef) else equipRef
+         catch throw "Input equipRef must be an id or record"
+
+  // Use site information to determine reference setpoint (per ASHRAE 90.1)
+  zipcode: try reGroups(r".*[A-Z]{2} (\d{5}).*",equip->siteRef->geoAddr)[1]
+           catch return null
+  
+  // Read file that links U.S. zip codes to ASHRAE climate zone and 
+  // to ASHRAE reference economizer lockout setpoint
+  fips: ioReadCsv(`io/FIPS_v4.csv`)
+  
+  // Lookup reference lockout setpoint
+  try fips.find(x => x["zip"] == zipcode)->lockout_Setpoint
+          .parseNumber.as("°F")
+  catch null
+  
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2023-01-13  Raphael Vitti
+    Created.
+  2023-07-06  Chris Weyandt
+    Replaced static lookup table with `/io/FIPS_v4.csv`
+------------------------------------------------------------------------------*/
