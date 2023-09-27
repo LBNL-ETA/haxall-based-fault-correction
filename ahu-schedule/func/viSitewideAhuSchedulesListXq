@@ -18,8 +18,9 @@
   so.
 ------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------
-  Load chosen point for all AHUs sitewide, or a subset of AHUs based
-  on provided filters, then display the result on a heat map.
+  Display a table of all AHUs that are accessible to the user on the cluster,
+  with optional filtering based on inputs. For each AHU, locate target
+  schedule point, if any. Format to display fields relevant to scheduling.
     
   Arguments: 
   directZoneStr  Str, describe whether to show AHUs with directZone tag
