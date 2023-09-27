@@ -1,0 +1,28 @@
+dis:AHU Schedules
+ahuScheduleMonitoring
+appName:ahuOp
+order:100
+view:sitewideAhuSchedules
+src:
+  view: {inherit:"tile"}
+  layout: {var kind:"Str" defVal:"grid 6x6; 0 0 3 6; 3 0 3 4; 3 4 3 2"}
+  list: Trio:
+    view: {inherit:"table"}
+    directZoneStr: {var enum:"Exclude directZone AHUs,Show only directZone AHUs,Show both directZone and other AHUs" kind:"Str" input defVal:"Exclude directZone AHUs"}
+    processStr: {var enum:"Exclude process AHUs,Show only process AHUs,Show both process and other AHUs" kind:"Str" input defVal:"Exclude process AHUs"}
+    scheduleStr: {var enum:"Exclude 24/7 target schedules,Show all target schedules" kind:"Str" input defVal:"Show all target schedules"}
+    selectedId: {var bindSelect:"id"}
+    pushSchedule: {dis:"Push Schedule" refresh action:"recPushSchedule" templateName:"pushSchedule" select}
+    editSchedule: {dis:"Edit Schedule" refresh action:"recEditSchedule" templateName:"editSchedule" select}
+    data: {expr:"viSitewideAhuSchedulesListXq({{directZoneStr}},{{processStr}},{{scheduleStr}})"}
+  trends: Trio:
+    view: {inherit:"chart"}
+    selectedId: {var input binding:"../list/selectedId"}
+    span: {var kind:"Span" input defExpr:"pastMonth().toSpan()"}
+    data: {expr:"viAhuStatusHisXq({{selectedId}},{{span}},15min,100000)"}
+  schedule: Trio:
+    view: {inherit:"chart"}
+    selectedId: {var input binding:"../list/selectedId"}
+    span: {var input binding:"../trends/span"}
+    data: {expr:"viAhuScheduleHisCompareXq({{selectedId}},{{span}},15min,100000)"}
+  

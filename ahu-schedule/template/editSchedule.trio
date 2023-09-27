@@ -1,0 +1,13 @@
+dis:Edit Schedule
+ahuScheduleMonitoring
+tags:
+  id: {kind:"Ref<equip>" navCluster navAuxFilter:"ahu"}
+  targetScheduleGrid: {kind:"Str" multi}
+  calendarRef: {kind:"Ref<calendar>" navCluster defVal:@p:integration:r:23d3d3ea-14e819cc "Hill Campus Calendar"}
+  
+  // Hidden tags
+  assetTag: {hidden}
+  observedScheduleStr: {hidden}
+  designSupplyAirflow: {hidden}
+  observedScheduleGrid: {hidden}
+template:editSchedule
