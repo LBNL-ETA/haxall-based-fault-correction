@@ -43,10 +43,7 @@
        .xqReadByIds([ahuId])
        .xqExecute
        .first
-
-  // Load BACnet schedule, if available
-  bacnetSched: read(point and bacnetSchedule and equipRef==ahuId) 
-
+  
   // Locate target schedule if available, load trends
   sP: xq()
   .xqReadAll(point and run and sp and his and equipRef==ahuId)
@@ -114,7 +111,8 @@
                     anAhuStatusHisGrid,
                     targetOffMainObservedOn,
                     targetOffWarmObservedOn,
-                    targetOnObservedOff]
+                    targetOnObservedOff,
+                   ]
                    .findAll(v => v != null))
  
   // Format

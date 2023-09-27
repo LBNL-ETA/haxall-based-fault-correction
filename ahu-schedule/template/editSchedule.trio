@@ -3,7 +3,7 @@ ahuScheduleMonitoring
 tags:
   id: {kind:"Ref<equip>" navCluster navAuxFilter:"ahu"}
   targetScheduleGrid: {kind:"Str" multi}
-  calendarRef: {kind:"Ref<calendar>" navCluster defVal:@p:integration:r:23d3d3ea-14e819cc "Hill Campus Calendar"}
+  calendarRef: {kind:"Ref<calendar>" navCluster optional}
   
   // Hidden tags
   assetTag: {hidden}

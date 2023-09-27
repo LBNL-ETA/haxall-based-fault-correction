@@ -29,7 +29,6 @@
 ------------------------------------------------------------------------------*/
 
 (ahuRef, span: pastMonth(), hisRollupInterval:15min, limit:10000) => do
-
   // Process ahuRef to accept id or record
   ahuRef= if (isRef(ahuRef)) ahuRef
           else try ahuRef->id
@@ -78,8 +77,8 @@ end
 
 /*------------------------------------------------------------------------------
   Updates
-  2022-07-28  Chris Weyandt
-    Added WiFi data for whole building
   2022-02-15  Raphael Vitti
     Created.
+  2022-07-28  Chris Weyandt
+    Added WiFi data for whole building.
 ------------------------------------------------------------------------------*/

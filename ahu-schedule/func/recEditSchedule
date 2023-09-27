@@ -41,7 +41,7 @@
 
   // Retrieve target equip schedule, if it exists
   schPt: xq()
-         .xqProjs(["integration"])
+         .xqProjs([refProjName(rec->id)])
          .xqReadAll(run and sp and point and equipRef==rec->id)
          .xqExecute
          .first
@@ -57,7 +57,7 @@
     his,
     hisFunc: "scheduleHis",
     hisMode: "cov",
-    calendarRef: rec->calendarRef,
+    calendarRef: rec["calendarRef"],
     scheduleGrid: rec->targetScheduleGrid,
     equipRef: equip->id,
     spaceRef: equip->spaceRef,
@@ -69,7 +69,7 @@
 
   // Update existing or create new target schedule point
   xq()
-  .xqProjs(["integration"])
+  .xqProjs([refProjName(rec->id)])
   .xqDefine("exRec", schPt)
   .xqDefine("changes", schPtDict)
   .xqEval("commit(diff(exRec, changes, if (exRec==null) {add} else null))")
@@ -81,4 +81,6 @@ end
   Updates
   2022-02-24  Raphael Vitti
     Created.
+  2023-09-27  Raphael Vitti
+    Modified to use refProjName instead of hard-coded target project name.
 ------------------------------------------------------------------------------*/
