@@ -43,4 +43,4 @@ Tagging requirements for points to be used in AHU's "Run Summary" analysis:
 --- run, sensor, kind:"Bool"
 --- run, cmd, kind:"Bool"
 ```
-As-written, the analysis function also excludes computed points (hisFunc).
+As-written, the "Run Summary" analysis function also excludes computed points (hisFunc).
