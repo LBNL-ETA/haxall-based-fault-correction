@@ -19,8 +19,7 @@
 ------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------
   Return current generalized occupied and unoccupied heating and cooling
-  setpoints for a selected terminal unit with ALC / Eikon temperature block,
-  using stored trends.
+  setpoints for a selected terminal unit with ALC / Eikon temperature block.
 
   Generalized inputs, excluding occupant adjustments and demand controls:
   These points have fixed values over long periods of time, and they do not 
