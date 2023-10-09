@@ -18,40 +18,30 @@
   so.
 ------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------
-
-/*------------------------------------------------------------------------------
-  For selected economizer high OAT lockout setpoint, determine optimized
-  target setpoint and write value to point.
+  Fold function with arity of two (val, acc) for Boolean streams, which returns
+  true if any one of the stream values is true.
   
   Arguments: 
-  sel          id of selected economizer high OAT lockout point
+  *** Typical arguments for fold functions with arity of two
 ------------------------------------------------------------------------------*/
 
-(sel) => do
-  // Normalize action input to obtain economizer lockout point
-  rec: readById(actionNormInput(sel, "id"))
-
-  // Determine target setpoint
-  targetVal: anEconHighLockoutReference(rec->equipRef)
-  
-  // Exit if targetVal is null or not a number
-  if (not(isNumber(targetVal))) return null
-  
-  // If connector is BACnet, attempt to change RELINQUISH_DEFAULT value
-  if (rec.has("bacnetConnRef") and rec.has("bacnetCur"))
-    try rec->bacnetConnRef.bacnetWriteObjectProperty(rec,
-                                                     "RELINQUISH_DEFAULT",
-                                                     targetVal)
-    catch null
-    
-  // Write to point at pre-configured level
-  pointWrite(rec, targetVal, 16, "recPushEconHighLockout")
+(val, acc) => do
+  if (val == foldStart()) {status:false}
+  else if (val == foldEnd()) acc["status"]
+  else if (val == na() or acc["status"]==na()) {status:na()}
+  else if (val == null) acc
+  else if (isBool(val)) {status: acc->status or val}
+  else if (isStr(val)) {status: acc->status
+                        or val.parseDiscreteBoolPeriods.any(r => r->val)}
+  else {status:na()}
 end
 
 /*------------------------------------------------------------------------------
   Updates
-  2023-06-21  Raphael Vitti
-    Created.
-  2023-07-06  Chris Weyandt
-    Added `bacnetCur` requirement for writing
+  2020-03-30  Raphael Vitti
+    Added copyright and license information.
+  2020-08-19  Raphael Vitti
+    Optimized by removing "return" instructions and using elseif
+  2023-06-06  Raphael Vitti
+    Added Str option to manage rolled-up Bool data
 ------------------------------------------------------------------------------*/

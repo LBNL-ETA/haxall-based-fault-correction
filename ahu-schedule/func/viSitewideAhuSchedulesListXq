@@ -1,0 +1,128 @@
+/*------------------------------------------------------------------------------
+  Haxall-based (Axon) fault auto-correction package for building HVAC
+  system (Haxall-based Fault Correction) Copyright (c) 2022, The
+  Regents of the University of California, through Lawrence Berkeley
+  National Laboratory (subject to receipt of any required approvals
+  from the U.S. Dept. of Energy) and kW Engineering. All rights reserved.
+
+  If you have questions about your rights to use or distribute this software,
+  please contact Berkeley Lab's Intellectual Property Office at
+  IPO@lbl.gov.
+
+  NOTICE.  This Software was developed under funding from the U.S. Department
+  of Energy and the U.S. Government consequently retains certain rights.  As
+  such, the U.S. Government has been granted for itself and others acting on
+  its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+  Software to reproduce, distribute copies to the public, prepare derivative 
+  works, and perform publicly and display publicly, and to permit others to do
+  so.
+------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------
+  Display a table of all AHUs that are accessible to the user on the cluster,
+  with optional filtering based on inputs. For each AHU, locate target
+  schedule point, if any. Format to display fields relevant to scheduling.
+    
+  Arguments: 
+  directZoneStr  Str, describe whether to show AHUs with directZone tag
+  processStr     Str, describe whether to show AHUs with process tag
+  scheduleStr    Str, describe whether to show AHUs with a 24/7 target sched.
+------------------------------------------------------------------------------*/
+
+(directZoneStr:"Exclude directZone AHUs",
+ processStr:"Exclude process AHUs",
+ scheduleStr: "Exclude 24/7 target schedules") => do
+ 
+   // Filter string
+  titleAdder: []
+  filterStr:
+    " ahu and not disabled"
+  if (directZoneStr=="Exclude directZone AHUs") do
+    filterStr= filterStr 
+    + " and not directZone"
+    titleAdder= titleAdder.add("not directZone")
+  end else if (directZoneStr=="Show only directZone AHUs") do
+    filterStr= filterStr
+    + " and directZone"
+    titleAdder= titleAdder.add("directZone only")
+  end
+  if (processStr=="Exclude process AHUs") do
+    filterStr= filterStr
+    + " and not process"
+    titleAdder= titleAdder.add("not process")
+  end else if (processStr=="Show only process AHUs") do
+    filterStr= filterStr
+    + " and process"
+    titleAdder= titleAdder.add("process only")
+  end
+
+  // Query AHUs
+  eqs: xq()
+       .xqUseReplicas()
+       .xqReadAll(parseFilter(filterStr))
+       .xqExecute               
+  if (isEmpty(eqs)) return null
+  titleAdderStr: if (titleAdder.size>0) " (" + titleAdder.concat(", ") + ")"
+                 else ""
+
+  // Query AHU target schedule points
+  schGrid: xq()
+           .xqReadAll(point and run and sp and scheduleGrid and equipRef->ahu)
+           .xqExecute()
+  // Associate schedule grid with its AHU
+  eqs= eqs
+  .removeCol("targetScheduleGrid")
+  .addCol("targetScheduleGrid", eq =>
+    try schGrid.find(r => r->equipRef==eq->id)->scheduleGrid
+    catch null)
+
+  // If filter based on schedule is required, also load schedule his
+  if (scheduleStr=="Exclude 24/7 target schedules") do
+    // Query all AHU target schedule histories for last week
+    schHisGrid: xq()
+    .xqReadAll(point and run and sp and scheduleGrid and equipRef->ahu)
+    .xqHisRead(lastWeek)
+    .xqExecute()
+    
+    // His grid columns
+    schHisColNames: schHisGrid.colNames
+    
+    // Filter based on hours target schedule was ON
+    eqs= eqs
+    .findAll(eq => try do
+      // Identify columns specific to AHU
+      eqColNames: schHisColNames
+      .findAll(c => schHisGrid.col(c).meta["equipRef"]==eq->id)
+      // Check if combination of all schedules results in less than 168hr
+      schHisGrid
+      .keepCols(["ts"].addAll(eqColNames))
+      .hisInterpolate()
+      .hisFoldCols(foldAny)
+      .hisFindPeriods(v => isBool(v) and v)
+      .foldCol("v0", sum) < 167.9hr
+    end catch true)
+  end
+
+  // Add title to id
+  eqs= eqs
+  .unique("id")
+  .addColMeta("id", {dis: "AHUs"+titleAdderStr})
+
+  // Sort, and select target columns
+  eqs= eqs
+  .sort((a,b) => a.dis() <=> b.dis())
+  .keepCols(["id","assetTag","observedScheduleStr","observedScheduleGrid",
+             "targetScheduleGrid","designSupplyAirflow"])
+  .toolFormatGrid(["id","assetTag","observedScheduleStr","designSupplyAirflow"])
+  .addColMeta("id", {colWidth:300})
+  .addColMeta("assetTag", {colWidth:150})
+
+  return eqs
+end
+
+/*------------------------------------------------------------------------------
+  Updates
+  2022-02-15  Raphael Vitti
+    Created.
+  2022-03-04  Raphael Vitti
+    Added filter based on target schedule.
+------------------------------------------------------------------------------*/

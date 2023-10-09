@@ -1,0 +1,13 @@
+dis:Push Schedule
+ahuScheduleMonitoring
+tags:
+  id: {kind:"Ref<equip>" navCluster navAuxFilter:"ahu"}
+  observedScheduleGrid: {kind:"Str" multi defVal:"""ver:"3.0"\nval,calendar,weekdays,date,start,end\nT,,"mon,tue,wed,thu,fri,sat,sun",,05:00:00,21:00:00\nF,,"mon,tue,wed,thu,fri,sat,sun",,00:00:00,00:00:00"""}
+  calendarRef: {kind:"Ref<calendar>" navCluster optional}
+  
+  // Hidden tags
+  assetTag: {hidden}
+  observedScheduleStr: {hidden}
+  designSupplyAirflow: {hidden}
+  targetScheduleGrid: {hidden}
+template:pushSchedule
