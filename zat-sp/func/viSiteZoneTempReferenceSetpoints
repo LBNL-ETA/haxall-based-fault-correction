@@ -48,8 +48,8 @@
   out.each((row, i) => do
     // Highlight discrepancies between current values and design values
     missingReferenceColor: "darkgrey"
-    matchColor: "#cefdce"
-    discrepancyColor: "#fad1d1"
+    matchColor: "palegreen"
+    discrepancyColor: "lightcoral"
     
     // Incomplete rows
     if (spCols.any(v => row.missing(v)))

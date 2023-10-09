@@ -18,29 +18,23 @@
   so.
 ------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------
-  Fold function with arity of two (val, acc) for Number streams, which returns
-  the first valid Number value encountered in the stream. It returns null if
-  entire stream is null, and na() if any value in the stream is na().
+  Create new or edit existing referenceZoneTemps record.
+  Associated with template=="referenceZoneTemps"
   
   Arguments: 
-  *** Typical arguments for fold functions with arity of two
+  referenceZoneTempsDict  Dict for new record with referenceZoneTemps template
 ------------------------------------------------------------------------------*/
 
-(val, acc) => do
-  if (val == foldStart()) {v0: null}
-  else if (val == foldEnd()) acc["v0"]
-  else if (val == na() or acc["v0"]==na()) {v0: na()}
-  else if (val == null or acc["v0"]!=null) acc
-  else {v0: val}
+(referenceZoneTempsDict) => do
+  // Normalize action input
+  rec: actionNormInput(referenceZoneTempsDict, "dict")
+
+  // Validate record
+  rec= recValidateReferenceZoneTemps(rec)
+  
+  // If id is provided, edit record, else create new record
+  if (rec.has("id"))
+    recEdit(rec)
+  else
+    recNew(rec)
 end
-
-/*------------------------------------------------------------------------------
-  Updates
-  2020-03-30  Raphael Vitti
-    Added copyright and license information.
-  2020-08-12  Raphael Vitti
-    Transmit acc if it already contains a non-null and 
-    non-na value.
-  2020-08-19  Raphael Vitti
-    Optimized by removing "return" instructions and using elseif
-------------------------------------------------------------------------------*/
