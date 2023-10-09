@@ -1,8 +1,0 @@
-dis:Economizer Lockout
-appName:setpoints
-view:econHighLockout
-src:
-  view: {inherit:"table"}
-  push: {dis:"Push Correction" action:"recPushEconHighLockout" select refresh}
-  data: {expr:"viEconHighLockout()"}
-  
