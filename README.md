@@ -2,8 +2,8 @@
 
 ## Introduction
 
-In partnership with Berkeley Lab researchers, a network of partners have implemented and demonstrated strategies to enhance their smart building platforms with capabilities spanning fault correction, optimal sequences of operation, automated commissioning with root cause failure identification, and best practice demand flexibility. 
-Berkeley Lab is funded by the Department of Energy to provide direct assistance to product and service providers who wish to integrate these open solutions into their offerings. So that we may best support and track these efforts, please register here to access the code.(https://transformingbuildingcontrols.lbl.gov/)   
+In partnership with Berkeley Lab researchers, a network of partners have implemented and demonstrated strategies to [enhance their smart building platforms](https://transformingbuildingcontrols.lbl.gov/) with capabilities spanning fault correction, optimal sequences of operation, automated commissioning with root cause failure identification, and best practice demand flexibility. 
+Berkeley Lab is funded by the Department of Energy to provide direct assistance to product and service providers who wish to integrate these open solutions into their offerings. So that we may best support and track these efforts, please register [here](https://transformingbuildingcontrols.lbl.gov/reference.php) to access the code.
 
 The collection of Axon code and Folio records includes components needed to replicate solutions that were documented in several articles (specifications, field tests, PID loop tuning) and further tested in several subsequent field applications:
 
